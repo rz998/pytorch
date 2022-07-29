@@ -1,0 +1,5 @@
+{
+  "code-runner.showExecutionMessage": false,
+  "python.pythonPath": "/Users/garyzhao/opt/anaconda3/envs/pytorch/bin/python",
+  "code-runner.executorMap": { "python": "$pythonPath -u $fullFileName"},
+}
