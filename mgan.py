@@ -7,15 +7,17 @@ import argparse
 
 #Fully Connected Feed Forward Network
 class FCFFNet(nn.Module):
-    def __init__(self, layers, nonlinearity, nonlinearity_params=None, 
+    def __init__(self, layers, nonlinearity, nonlinearity_params=None,
                  out_nonlinearity=None, out_nonlinearity_params=None, normalize=False):
         super(FCFFNet, self).__init__()
         self.n_layers = len(layers) - 1
         assert self.n_layers >= 1
 
         self.layers = nn.ModuleList()
+
         for j in range(self.n_layers):
             self.layers.append(nn.Linear(layers[j], layers[j+1]))
+            print(self.layers)
             if j != self.n_layers - 1:
                 if normalize:
                     self.layers.append(nn.BatchNorm1d(layers[j+1]))
@@ -38,9 +40,9 @@ class FCFFNet(nn.Module):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--monotone_param", type=float, default=0.01, help="monotone penalty constant")
-parser.add_argument("--dataset", type=str, default='tanh_v1', help="one of: tanh_v1,tanh_v2,tanh_v3")
+parser.add_argument("--dataset", type=str, default='tanh_v2', help="one of: tanh_v1,tanh_v2,tanh_v3")
 parser.add_argument("--n_train", type=int, default=10000, help="number of training samples")
-parser.add_argument("--n_epochs", type=int, default=200, help="number of epochs")
+parser.add_argument("--n_epochs", type=int, default=1, help="number of epochs")
 parser.add_argument("--n_layers", type=int, default=3, help="number of layers in network")
 parser.add_argument("--n_units", type=int, default=128, help="number of hidden units in each layer")
 parser.add_argument("--batch_size", type=int, default=100, help="batch size (Should divide Ntest)")
@@ -84,6 +86,7 @@ mse_loss = torch.nn.MSELoss()
 network_params = [dx+dy] + args.n_layers * [args.n_units]
 F = FCFFNet(network_params + [dx], nn.LeakyReLU, nonlinearity_params=[0.2, True]).to(device)
 D = FCFFNet(network_params + [1], nn.LeakyReLU, nonlinearity_params=[0.2, True], out_nonlinearity=nn.Sigmoid).to(device)
+
 
 #Optimizers
 optimizer_F = torch.optim.Adam(F.parameters(), lr=args.learning_rate, betas=(0.5, 0.999))
@@ -176,57 +179,57 @@ for ep in range(args.n_epochs):
     #Average generator and discriminator losses
     F_train[ep] = F_train_inner/math.ceil(float(args.n_train)/bsize)
     D_train[ep] = D_train_inner/math.ceil(float(args.n_train)/bsize)
- 
+
     print('Epoch %3d, Monotonicity: %f, Generator loss: %f, Critic loss: %f' % \
          (ep, monotonicity[ep], F_train[ep], D_train[ep]))
 
 
 # Plot losses
-import matplotlib.pyplot as plt
-plt.figure()
-plt.subplot(1,2,1)
-plt.plot(np.arange(args.n_epochs), monotonicity.numpy())
-plt.xlabel('Number of epochs')
-plt.ylabel('Monotonicity')
-plt.ylim(0,1)
-plt.subplot(1,2,2)
-plt.plot(np.arange(args.n_epochs), D_train.numpy(), label='Critic loss')
-plt.plot(np.arange(args.n_epochs), F_train.numpy(), label='Generator loss')
-plt.xlabel('Number of epochs')
-plt.legend()
-plt.show()
+# import matplotlib.pyplot as plt
+# plt.figure()
+# plt.subplot(1,2,1)
+# plt.plot(np.arange(args.n_epochs), monotonicity.numpy())
+# plt.xlabel('Number of epochs')
+# plt.ylabel('Monotonicity')
+# plt.ylim(0,1)
+# plt.subplot(1,2,2)
+# plt.plot(np.arange(args.n_epochs), D_train.numpy(), label='Critic loss')
+# plt.plot(np.arange(args.n_epochs), F_train.numpy(), label='Generator loss')
+# plt.xlabel('Number of epochs')
+# plt.legend()
+# plt.show()
 
-# Plot densities
-# define conditionals
-xst = [-1.2, 0, 1.2]
-Ntest = 1000
+# # Plot densities
+# # define conditionals
+# xst = [-1.2, 0, 1.2]
+# Ntest = 1000
 
-# define domain
-y_dom = [-2,2]
-yy = np.linspace(y_dom[0], y_dom[1], 100)
-yy = np.reshape(yy, (100, 1))
+# # define domain
+# y_dom = [-2,2]
+# yy = np.linspace(y_dom[0], y_dom[1], 100)
+# yy = np.reshape(yy, (100, 1))
 
-#Sample each conditional
-plt.figure()
-for i,xi in enumerate(xst):
+# #Sample each conditional
+# plt.figure()
+# for i,xi in enumerate(xst):
 
-    # sample from conditional
-    xit = torch.tensor([xi]).view(1,1)
-    xit = xit.repeat(Ntest,1).to(device)
-    z = torch.randn(Ntest, dx, device=device)
-    with torch.no_grad():
-        Fz = F(torch.cat((xit, z), 1))
-    Fz = Fz.cpu().numpy()
+#     # sample from conditional
+#     xit = torch.tensor([xi]).view(1,1)
+#     xit = xit.repeat(Ntest,1).to(device)
+#     z = torch.randn(Ntest, dx, device=device)
+#     with torch.no_grad():
+#         Fz = F(torch.cat((xit, z), 1))
+#     Fz = Fz.cpu().numpy()
 
-    # define true joint and normalize to get posterior
-    post_i = pi.joint_pdf(np.array([[xi]]), yy)
-    post_i_norm_const = np.trapz(post_i[:,0], x=yy[:,0])
-    post_i /= post_i_norm_const
-        
-    # plot density and samples
-    plt.plot(yy, post_i)
-    plt.hist(Fz, bins=20, density=True, label='$x^* = '+str(xi)+'$')
-    plt.legend()
-plt.xlabel('$y$')
-plt.ylabel('$\pi(y|x^*)$')
-plt.show()
+#     # define true joint and normalize to get posterior
+#     post_i = pi.joint_pdf(np.array([[xi]]), yy)
+#     post_i_norm_const = np.trapz(post_i[:,0], x=yy[:,0])
+#     post_i /= post_i_norm_const
+
+#     # plot density and samples
+#     plt.plot(yy, post_i)
+#     plt.hist(Fz, bins=20, density=True, label='$x^* = '+str(xi)+'$')
+#     plt.legend()
+# plt.xlabel('$y$')
+# plt.ylabel('$\pi(y|x^*)$')
+# plt.show()

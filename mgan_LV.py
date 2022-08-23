@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import math
-from tanh_example import tanh_v1, tanh_v2, tanh_v3
+from LotkaVolterra import LV
 import numpy as np
 import argparse
 
@@ -38,9 +38,10 @@ class FCFFNet(nn.Module):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--monotone_param", type=float, default=0.01, help="monotone penalty constant")
-parser.add_argument("--dataset", type=str, default='tanh_v1', help="one of: tanh_v1,tanh_v2,tanh_v3")
-parser.add_argument("--n_train", type=int, default=10000, help="number of training samples")
-parser.add_argument("--n_epochs", type=int, default=200, help="number of epochs")
+parser.add_argument("--gp_param", type=float, default=1.0, help="penalty for gradient in WGAN loss")
+parser.add_argument("--dataset", type=str, default='LV', help="default is LV")
+parser.add_argument("--n_train", type=int, default=100000, help="number of training samples")
+parser.add_argument("--n_epochs", type=int, default=400, help="number of epochs")
 parser.add_argument("--n_layers", type=int, default=3, help="number of layers in network")
 parser.add_argument("--n_units", type=int, default=128, help="number of hidden units in each layer")
 parser.add_argument("--batch_size", type=int, default=100, help="batch size (Should divide Ntest)")
@@ -54,12 +55,8 @@ device = torch.device('cpu')
 
 # define density
 dataset = args.dataset
-if dataset == 'tanh_v1':
-    pi = tanh_v1()
-elif dataset == 'tanh_v2':
-    pi = tanh_v2()
-elif dataset == 'tanh_v3':
-    pi = tanh_v3()
+if dataset == 'LV':
+    pi = LV(20)
 else:
     raise ValueError('Dataset is not recognized')
 
