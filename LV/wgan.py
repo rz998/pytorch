@@ -41,7 +41,7 @@ class Generator(nn.Module):
         Parameters:
             input_channels: how many channels the input feature representation has
             output_channels: how many channels the output feature representation should have
-            final_layer: a boolean, true if it is the final layer and false otherwise 
+            final_layer: a boolean, true if it is the final layer and false otherwise
                       (affects activation and batchnorm)
         '''
         if not final_layer:
@@ -101,7 +101,7 @@ class Critic(nn.Module):
         Parameters:
             input_channels: how many channels the input feature representation has
             output_channels: how many channels the output feature representation should have
-            final_layer: a boolean, true if it is the final layer and false otherwise 
+            final_layer: a boolean, true if it is the final layer and false otherwise
                       (affects activation and batchnorm)
         '''
         if not final_layer:
@@ -116,7 +116,7 @@ class Critic(nn.Module):
 
     def forward(self, image):
         '''
-        Function for completing a forward pass of the critic: Given an image tensor, 
+        Function for completing a forward pass of the critic: Given an image tensor,
         returns a 1-dimension tensor representing fake/real.
         Parameters:
             image: a flattened image tensor with dimension (im_chan)
@@ -141,7 +141,7 @@ def get_gradient(crit, real, fake, epsilon):
 
     # Calculate the critic's scores on the mixed images
     mixed_scores = crit(mixed_images)
-    
+
     # Take the gradient of the scores with respect to the images
     gradient = torch.autograd.grad(
         # Note: You need to take the gradient of outputs with respect to inputs.
@@ -150,7 +150,7 @@ def get_gradient(crit, real, fake, epsilon):
         inputs=mixed_images,
         outputs=mixed_scores,
         # These other parameters have to do with the pytorch autograd engine works
-        grad_outputs=torch.ones_like(mixed_scores), 
+        grad_outputs=torch.ones_like(mixed_scores),
         create_graph=True,
         retain_graph=True,
     )[0]
@@ -172,7 +172,7 @@ def gradient_penalty(gradient):
 
     # Calculate the magnitude of every row
     gradient_norm = gradient.norm(2, dim=1)
-    
+
     # Penalize the mean squared distance of the gradient norms from 1
     penalty = torch.mean((gradient_norm - 1)**2)
     return penalty
@@ -182,7 +182,7 @@ def monotonicity_penalty(fake, fake_prime, z, z_prime):
     '''
     Return the average monotonicty penalty, given generator outputs:
         monp = mean(<gen(y,z) - gen(y',z'), z - z'>)
-    '''    
+    '''
     # compute penalty for each sample
     bsize = len(fake)
     mon_penalty = torch.sum(((fake - fake_prime).view(bsize, -1))*((z.detach() - z_prime.detach()).view(bsize,-1)), 1)
@@ -212,7 +212,7 @@ def get_crit_loss(crit_fake_pred, crit_real_pred, gp, gp_lambda):
         crit_fake_pred: the critic's scores of the fake images
         crit_real_pred: the critic's scores of the real images
         gp: the unweighted gradient penalty
-        gp_lambda: the current weight of the gradient penalty 
+        gp_lambda: the current weight of the gradient penalty
     Returns:
         crit_loss: a scalar for the critic's loss, accounting for the relevant factors
     '''
@@ -222,7 +222,7 @@ def get_crit_loss(crit_fake_pred, crit_real_pred, gp, gp_lambda):
 if __name__=='__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--n_train", type=int, default=100000, help="number of training samples")
+    parser.add_argument("--n_train", type=int, default=10000, help="number of training samples")
     parser.add_argument("--n_epochs", type=int, default=400, help="number of epochs")
     parser.add_argument("--normalize", type=int, default=1, help="normalize or not inputs")
     parser.add_argument("--crit_repeats", type=int, default=1, help="number of F map updates")
@@ -231,14 +231,14 @@ if __name__=='__main__':
     parser.add_argument("--gp_lambda", type=float, default=1.0, help="penalty for gradient in WGAN loss")
     parser.add_argument("--lr", type=float, default=0.0002, help="learning rate")
     args = parser.parse_args()
-    
+
     # set other parameters
     beta_1 = 0.5
     beta_2 = 0.999
     device = 'cpu' #'cpu'
     display_step = 100
     hidden_dim = 128
-    
+
     # define model
     T = 20;
     LV = DeterministicLotkaVolterra(T)
@@ -250,7 +250,7 @@ if __name__=='__main__':
     y_train,_ = LV.sample_data(x_train)
     x_train = torch.tensor(x_train).float()
     y_train = torch.tensor(y_train).float()
-    
+
     # save data
     scipy.io.savemat('training_data.mat',mdict={'x_train':x_train.detach().numpy(), 'y_train':y_train.detach().numpy()})
 
@@ -260,21 +260,21 @@ if __name__=='__main__':
         x_train = x_normalizer.encode(x_train)
         y_normalizer = UnitGaussianNormalizer(y_train)
         y_train = y_normalizer.encode(y_train)
-    
+
     # define data
     xy_loader = DataLoader(TensorDataset(x_train, y_train), batch_size=args.batch_size, shuffle=True)
     y_loader = DataLoader(TensorDataset(y_train, ), batch_size=args.batch_size, shuffle=True)
-    
+
     # determine reference dimension
     z_dim = x_train.shape[1]
     y_dim = y_train.shape[1]
-    
+
     # define generator and discrminator/critic
     gen = Generator(input_dim=z_dim+y_dim, output_dim=z_dim, hidden_dim=hidden_dim).to(device)
     gen_opt = torch.optim.Adam(gen.parameters(), lr=args.lr, betas=(beta_1, beta_2))
-    crit = Critic(input_dim=z_dim+y_dim, hidden_dim=hidden_dim).to(device) 
+    crit = Critic(input_dim=z_dim+y_dim, hidden_dim=hidden_dim).to(device)
     crit_opt = torch.optim.Adam(crit.parameters(), lr=args.lr, betas=(beta_1, beta_2))
-    
+
     def weights_init(m):
         #if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
         if isinstance(m, nn.Linear):
@@ -285,73 +285,73 @@ if __name__=='__main__':
             torch.nn.init.constant_(m.bias, 0)
     gen = gen.apply(weights_init)
     crit = crit.apply(weights_init)
-    
+
     # define arrays to store results
     cur_step = 0
     generator_losses = []
     critic_losses = []
     gp_penalty = []
     monotonicity = []
-    
+
     for epoch in range(args.n_epochs):
         # Dataloader returns the batches
         for (x,y) in tqdm(xy_loader):
-    
+
             cur_batch_size = len(x)
             #real = real.to(device)
             x, y = x.to(device), y.to(device)
-    
+
             mean_iteration_critic_loss = 0
             mean_iteration_gp_penalty = 0
-    
+
             ### Update critic ###
             for _ in range(args.crit_repeats):
-                
+
                 crit_opt.zero_grad()
-    
+
                 # evaluate critic at fake inputs
                 fake_noise = get_noise(cur_batch_size, z_dim, device=device)
                 fake_z = torch.cat((y, fake_noise),1)
                 fake = gen(fake_z)
                 joint_fake = torch.cat((y, fake), 1)
                 crit_fake_pred = crit(joint_fake.detach())
-    
+
                 # evaluate critic at real inputs
                 joint_real = torch.cat((y, x), 1)
                 crit_real_pred = crit(joint_real)
-    
+
                 # compute gradient penalty
                 epsilon = torch.rand(len(x), 1, device=device, requires_grad=True)
                 gradient = get_gradient(crit, joint_real, joint_fake.detach(), epsilon)
                 gp = gradient_penalty(gradient)
-    
+
                 # compute critic loss
                 crit_loss = get_crit_loss(crit_fake_pred, crit_real_pred, gp, args.gp_lambda)
-    
+
                 # Keep track of the average critic loss in this batch
                 mean_iteration_critic_loss += crit_loss.item() / args.crit_repeats
                 # Keep track of average gp penalty
                 mean_iteration_gp_penalty += gp.item() / args.crit_repeats
-    
+
                 # Update gradients
                 crit_loss.backward(retain_graph=True)
                 # Update optimizer
                 crit_opt.step()
-    
+
             critic_losses += [mean_iteration_critic_loss]
             gp_penalty += [mean_iteration_gp_penalty]
-    
+
             ### Update generator ###
-    
+
             gen_opt.zero_grad()
-    
+
             # evaluate critic at fake inputs
             fake_noise_2 = get_noise(cur_batch_size, z_dim, device=device)
             fake_z_2 = torch.cat((y, fake_noise_2),1)
             fake_2 = gen(fake_z_2)
             joint_fake_2 = torch.cat((y, fake_2), 1)
             crit_fake_pred_2 = crit(joint_fake_2)
-            
+
             # compute monotonicity penalty
             fake_noise_prime = get_noise(cur_batch_size, z_dim, device=device)
             y_prime = next(iter(y_loader))[0].to(device)
@@ -360,58 +360,58 @@ if __name__=='__main__':
             fake_z_prime = torch.cat((y_prime, fake_noise_prime),1).detach()
             fake_prime = gen(fake_z_prime)
             monp = monotonicity_penalty(fake_2, fake_prime, fake_noise_2, fake_noise_prime) #fake_z_2, fake_z_prime)
-    
+
             # compute generator map loss
             gen_loss = get_gen_loss(crit_fake_pred_2, monp, args.m_lambda)
-    
+
             # Update the weights
             gen_loss.backward()
             gen_opt.step()
-    
+
             # Keep track of the average generator loss
             generator_losses += [gen_loss.item()]
             # Keep track of monotonicity penalty
             monotonicity += [monp.item()]
-    
+
     # plot losses
     step_bins = 20
     num_examples = (len(generator_losses) // step_bins) * step_bins
     plt.figure()
     plt.plot(
-        range(num_examples // step_bins), 
+        range(num_examples // step_bins),
         torch.Tensor(generator_losses[:num_examples]).view(-1, step_bins).mean(1),
         label="Generator Loss"
     )
     plt.plot(
-        range(num_examples // step_bins), 
+        range(num_examples // step_bins),
         torch.Tensor(critic_losses[:num_examples]).view(-1, step_bins).mean(1),
         label="Critic Loss"
     )
     plt.legend()
     plt.savefig('losses_'+dataset+'.pdf')
     plt.close()
-    
+
     # plot GP penalty
     plt.figure()
     plt.plot(
-        range(num_examples // step_bins), 
+        range(num_examples // step_bins),
         torch.Tensor(gp_penalty[:num_examples]).view(-1, step_bins).mean(1)
     )
     plt.ylabel('GP penalty')
     plt.ylim(-1.5,1.5)
     plt.savefig('gradient_penalty_'+dataset+'.pdf')
     plt.close()
-    
+
     # plot monotonicity
     plt.figure()
     plt.plot(
-        range(num_examples // step_bins), 
+        range(num_examples // step_bins),
         torch.Tensor(monotonicity[:num_examples]).view(-1, step_bins).mean(1)
     )
     plt.ylabel('Monotonicity')
     plt.savefig('monotonicity_penalty_'+dataset+'.pdf')
     plt.close()
-    
+
     # save map
     name = 'mgan_' + dataset + '_mon' + str(args.m_lambda)[2:] + '_gp' + str(args.gp_lambda)
     torch.save(gen.state_dict(), name + '_gen.pt')

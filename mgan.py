@@ -14,10 +14,8 @@ class FCFFNet(nn.Module):
         assert self.n_layers >= 1
 
         self.layers = nn.ModuleList()
-
         for j in range(self.n_layers):
             self.layers.append(nn.Linear(layers[j], layers[j+1]))
-            print(self.layers)
             if j != self.n_layers - 1:
                 if normalize:
                     self.layers.append(nn.BatchNorm1d(layers[j+1]))
@@ -40,7 +38,7 @@ class FCFFNet(nn.Module):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--monotone_param", type=float, default=0.01, help="monotone penalty constant")
-parser.add_argument("--dataset", type=str, default='tanh_v2', help="one of: tanh_v1,tanh_v2,tanh_v3")
+parser.add_argument("--dataset", type=str, default='tanh_v1', help="one of: tanh_v1,tanh_v2,tanh_v3")
 parser.add_argument("--n_train", type=int, default=10000, help="number of training samples")
 parser.add_argument("--n_epochs", type=int, default=1, help="number of epochs")
 parser.add_argument("--n_layers", type=int, default=3, help="number of layers in network")
@@ -86,6 +84,9 @@ mse_loss = torch.nn.MSELoss()
 network_params = [dx+dy] + args.n_layers * [args.n_units]
 F = FCFFNet(network_params + [dx], nn.LeakyReLU, nonlinearity_params=[0.2, True]).to(device)
 D = FCFFNet(network_params + [1], nn.LeakyReLU, nonlinearity_params=[0.2, True], out_nonlinearity=nn.Sigmoid).to(device)
+
+print(F.n_layers)
+print(D.n_layers)
 
 
 #Optimizers
@@ -184,7 +185,7 @@ for ep in range(args.n_epochs):
          (ep, monotonicity[ep], F_train[ep], D_train[ep]))
 
 
-# Plot losses
+# # Plot losses
 # import matplotlib.pyplot as plt
 # plt.figure()
 # plt.subplot(1,2,1)
