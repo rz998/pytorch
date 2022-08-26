@@ -47,16 +47,16 @@ class tanh_v1(tanh_example):
     def __init__(self):
         super(tanh_v1, self).__init__()
         self.y_alpha = 1.
-        self.y_beta  = 1./0.3
+        self.y_beta  = 0.3
 
     def sample_data(self, x):
         N = x.shape[0]
-        g = gamma.rvs(self.y_alpha, loc=0, scale=1./self.y_beta, size=(N,1))
+        g = gamma.rvs(self.y_alpha, loc=0, scale=self.y_beta, size=(N,1))
         return np.tanh(x) + g
 
     def likelihood_function(self, x, y):
         g = y - np.tanh(x)
-        return gamma.pdf(g, self.y_alpha, loc=0, scale=1./self.y_beta)
+        return gamma.pdf(g, self.y_alpha, loc=0, scale=self.y_beta)
 
 class tanh_v2(tanh_example):
 
@@ -89,13 +89,13 @@ class tanh_v3(tanh_example):
     def __init__(self):
         super(tanh_v3, self).__init__()
         self.y_alpha = 1.
-        self.y_beta  = 1./0.3
+        self.y_beta  = 0.3
 
     def sample_data(self, x):
         N = x.shape[0]
-        g = gamma.rvs(self.y_alpha, loc=0, scale=1./self.y_beta, size=(N,1))
+        g = gamma.rvs(self.y_alpha, loc=0, scale=self.y_beta, size=(N,1))
         return np.tanh(x) * g
 
     def likelihood_function(self, x, y):
         g = y / np.tanh(x)
-        return gamma.pdf(g, self.y_alpha, loc=0, scale=1./self.y_beta)
+        return gamma.pdf(g, self.y_alpha, loc=0, scale=self.y_beta)
