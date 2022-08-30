@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import math
-from tanh_example import tanh_v1, tanh_v2, tanh_v3
+from LV_example import LV
 import numpy as np
 import argparse
 import matplotlib.pyplot as plt
@@ -10,7 +10,7 @@ from sklearn.neighbors import KernelDensity
 # hyperparameters
 parser = argparse.ArgumentParser()
 parser.add_argument("--monotone_param", type=float, default=0.01, help="monotone penalty constant")
-parser.add_argument("--dataset", type=str, default='tanh_v1', help="one of: tanh_v1,tanh_v2,tanh_v3")
+parser.add_argument("--dataset", type=str, default='LV', help="LV only")
 parser.add_argument("--n_train", type=int, default=10000, help="number of training samples")
 parser.add_argument("--n_epochs", type=int, default=1, help="number of epochs")
 parser.add_argument("--n_layers", type=int, default=3, help="number of layers in network")
@@ -29,12 +29,8 @@ device = torch.device('cpu')
 
 # pick dataset
 dataset = args.dataset
-if dataset == 'tanh_v1':
-    pi = tanh_v1()
-elif dataset == 'tanh_v2':
-    pi = tanh_v2()
-elif dataset == 'tanh_v3':
-    pi = tanh_v3()
+if dataset == 'LV':
+    pi = LV(20)
 else:
     raise ValueError('Dataset is not supported')
 
@@ -85,11 +81,12 @@ ydata_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(y_trai
 mse_loss = torch.nn.MSELoss()
 
 # build networks
-network_params = [dim_u+dim_y] + [2 * args.n_units] + [4 * args.n_units] + [args.n_units]
+G_params = [dim_u+dim_y] + [args.n_units] + [2 * args.n_units] + [4 * args.n_units]
+D_params = [dim_u+dim_y] + [4 * args.n_units] + [2 * args.n_units] + [args.n_units]
 # generator network
-G = fcfnn(network_params + [dim_u], nn.LeakyReLU, activ_params=[0.2, True]).to(device)
+G = fcfnn(G_params + [dim_u], nn.LeakyReLU, activ_params=[0.2, True]).to(device)
 # discriminator network
-D = fcfnn(network_params + [1], nn.LeakyReLU, activ_params=[0.2, True], out_activ_params=nn.Sigmoid).to(device)
+D = fcfnn(D_params + [1], nn.LeakyReLU, activ_params=[0.2, True], out_activ_params=nn.Sigmoid).to(device)
 
 
 # optimizers
@@ -191,91 +188,91 @@ for ep in range(args.n_epochs):
 # plot
 
 # define conditionals
-y_cond = [-1.1, 0, 1.1]
-Ntest = 1000
+# y_cond = [-1.1, 0, 1.1]
+# Ntest = 1000
 
 
-# define y domain
-y_dom = [-2,2]
-y_vec = np.linspace(y_dom[0], y_dom[1], 100)
-y_vec = np.reshape(y_vec, (100, 1))
+# # define y domain
+# y_dom = [-2,2]
+# y_vec = np.linspace(y_dom[0], y_dom[1], 100)
+# y_vec = np.reshape(y_vec, (100, 1))
 
-# plot conditional
-plt.figure()
-colors = ['red', 'green', 'blue']
+# # plot conditional
+# plt.figure()
+# colors = ['red', 'green', 'blue']
 
-for i, y in enumerate(y_cond):
+# for i, y in enumerate(y_cond):
 
-    # sample from conditional
-    yi = torch.tensor([y]).view(1,1)
-    yi = yi.repeat(Ntest,1).to(device)
-    z = torch.randn(Ntest, dim_u, device=device)
-    with torch.no_grad():
-        Gz = G(torch.cat((yi, z), 1))
-    Gz = Gz.cpu().numpy()
+#     # sample from conditional
+#     yi = torch.tensor([y]).view(1,1)
+#     yi = yi.repeat(Ntest,1).to(device)
+#     z = torch.randn(Ntest, dim_u, device=device)
+#     with torch.no_grad():
+#         Gz = G(torch.cat((yi, z), 1))
+#     Gz = Gz.cpu().numpy()
 
-    # define true joint and normalize to get posterior
-    post_i = pi.joint_pdf(np.array([[y]]), y_vec)
-    post_i_norm_const = np.trapz(post_i[:,0], x=y_vec[:,0])
-    post_i /= post_i_norm_const
+#     # define true joint and normalize to get posterior
+#     post_i = pi.joint_pdf(np.array([[y]]), y_vec)
+#     post_i_norm_const = np.trapz(post_i[:,0], x=y_vec[:,0])
+#     post_i /= post_i_norm_const
 
-    # plot density and samples
-    plt.plot(y_vec, post_i, color = colors[i])
-    plt.hist(Gz, bins=20, density=True,label='y = '+str(y), color = colors[i])
-    plt.legend()
+#     # plot density and samples
+#     plt.plot(y_vec, post_i, color = colors[i])
+#     plt.hist(Gz, bins=20, density=True,label='y = '+str(y), color = colors[i])
+#     plt.legend()
 
-plt.xlabel('$y$')
-plt.ylabel('$\\nu({\\rm d}u|y)$')
-plt.show()
+# plt.xlabel('$y$')
+# plt.ylabel('$\\nu({\\rm d}u|y)$')
+# plt.show()
 
-# plot joint
-plt.figure()
-# 2-D KDE
-def kde2D(x, y, bandwidth, xbins=100j, ybins=100j, **kwargs):
-    """Build 2D kernel density estimate (KDE)."""
+# # plot joint
+# plt.figure()
+# # 2-D KDE
+# def kde2D(x, y, bandwidth, xbins=100j, ybins=100j, **kwargs):
+#     """Build 2D kernel density estimate (KDE)."""
 
-    # create grid of sample locations (default: 100x100)
-    xx, yy = np.mgrid[x.min():x.max():xbins,
-                      y.min():y.max():ybins]
+#     # create grid of sample locations (default: 100x100)
+#     xx, yy = np.mgrid[x.min():x.max():xbins,
+#                       y.min():y.max():ybins]
 
-    xy_sample = np.vstack([yy.ravel(), xx.ravel()]).T
-    xy_train  = np.vstack([y, x]).T
+#     xy_sample = np.vstack([yy.ravel(), xx.ravel()]).T
+#     xy_train  = np.vstack([y, x]).T
 
-    kde_skl = KernelDensity(bandwidth=bandwidth, **kwargs)
-    kde_skl.fit(xy_train)
+#     kde_skl = KernelDensity(bandwidth=bandwidth, **kwargs)
+#     kde_skl.fit(xy_train)
 
-    # score_samples() returns the log-likelihood of the samples
-    z = np.exp(kde_skl.score_samples(xy_sample))
-    return xx, yy, np.reshape(z, xx.shape)
+#     # score_samples() returns the log-likelihood of the samples
+#     z = np.exp(kde_skl.score_samples(xy_sample))
+#     return xx, yy, np.reshape(z, xx.shape)
 
 
 
-# define u domain
-u_dom = [-1,3]
-u_vec = np.linspace(u_dom[0], u_dom[1], 100)
-u_vec = np.reshape(u_vec, (100, 1))
+# # define u domain
+# u_dom = [-1,3]
+# u_vec = np.linspace(u_dom[0], u_dom[1], 100)
+# u_vec = np.reshape(u_vec, (100, 1))
 
-# plot true joint density
-plt.subplot(1,2,1)
-# Y,U = np.meshgrid(y_vec,u_vec)
-# plt.pcolormesh(Y,U,pi.joint_pdf(Y, U))
-y_train = y_train.cpu().numpy()
-u_train = u_train.cpu().numpy()
-xx, yy, zz = kde2D(y_train[:,0], u_train[:,0], 0.5)
-plt.pcolormesh(xx, yy, np.exp(zz))
+# # plot true joint density
+# plt.subplot(1,2,1)
+# # Y,U = np.meshgrid(y_vec,u_vec)
+# # plt.pcolormesh(Y,U,pi.joint_pdf(Y, U))
+# y_train = y_train.cpu().numpy()
+# u_train = u_train.cpu().numpy()
+# xx, yy, zz = kde2D(y_train[:,0], u_train[:,0], 0.5)
+# plt.pcolormesh(xx, yy, np.exp(zz))
 
-# plot M-GAN estimate
-y_vec = np.linspace(y_dom[0], y_dom[1], 1000)
-y_vec = np.reshape(y_vec, (1000, 1))
-y_vec = torch.from_numpy(y_vec.astype(np.float32))
-with torch.no_grad():
-    u_vec = G(torch.cat((y_vec, z), 1))
+# # plot M-GAN estimate
+# y_vec = np.linspace(y_dom[0], y_dom[1], 1000)
+# y_vec = np.reshape(y_vec, (1000, 1))
+# y_vec = torch.from_numpy(y_vec.astype(np.float32))
+# with torch.no_grad():
+#     u_vec = G(torch.cat((y_vec, z), 1))
 
-y_vec = y_vec.cpu().numpy()
-u_vec = u_vec.cpu().numpy()
-xx, yy, zz = kde2D(y_vec[:,0], u_vec[:,0], 0.5)
+# y_vec = y_vec.cpu().numpy()
+# u_vec = u_vec.cpu().numpy()
+# xx, yy, zz = kde2D(y_vec[:,0], u_vec[:,0], 0.5)
 
-plt.subplot(1,2,2)
-plt.pcolormesh(xx, yy, np.exp(zz))
+# plt.subplot(1,2,2)
+# plt.pcolormesh(xx, yy, np.exp(zz))
 
-plt.show()
+# plt.show()
