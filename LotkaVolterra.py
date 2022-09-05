@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.stats import lognorm
 from scipy.integrate import odeint
+import matplotlib.pyplot as plt
 
 class LV():
 
@@ -61,21 +62,30 @@ class LV():
             yobs = self.simulate_ode(theta[j,:], tt);
             # extract observations, flatten, and add noise
             yobs = np.abs(yobs[1:,:]).ravel()
-            #xt[j,:] = lognorm.rvs(scale=np.exp(np.log(yobs)), s=self.obs_std, size=(1,))
             xt[j,:] = np.array([lognorm.rvs(scale=x, s=self.obs_std) for x in yobs])
         return (xt, tt)
 
-       def log_prior_pdf(self, theta):
-        # check dimensions of inputs
-        assert(theta.shape[1] == self.d)
-        # compute mean and variance
-        prior_mean = [self.alpha_mu, self.beta_mu, self.gamma_mu, self.delta_mu]
-        prior_std = [self.alpha_std, self.beta_std, self.gamma_std, self.delta_std]
-        # evaluate product of PDFs for independent variables
-        return np.sum(lognorm.logpdf(theta, scale=np.exp(prior_mean), s=prior_std), axis=1)
 
-       def prior_pdf(self, theta):
-        return np.exp( self.log_prior_pdf(theta) )
+ # define model
+T = 20
+true_LV = LV(T)
+
+# define true parameters and observation
+xtrue = np.array([0.6859157, 0.10761319, 0.88789904, 0.116794825])
+tt = np.linspace(0,true_LV.T,1000)
+ytrue = true_LV.simulate_ode(xtrue, tt)
+yobs,tobs = true_LV.sample_data(xtrue)
+nobs = int(yobs.size/2.)
+yobs_plot = yobs.reshape((nobs,2))
+
+# plot single simulation
+plt.figure()
+plt.plot(tt,ytrue[:,0], 'blue', tt,ytrue[:,1],'red')
+plt.plot(tobs[1:],yobs_plot[:,0],'o', markersize=8, color='blue')
+plt.plot(tobs[1:],yobs_plot[:,1],'o', markersize=8, color='red')
+plt.xlabel('$t$')
+plt.ylabel('Observations')
+plt.show()
 
 
 

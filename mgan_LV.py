@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import math
-from LV_example import LV
+from LotkaVolterra import LV
 import numpy as np
 import argparse
 import matplotlib.pyplot as plt
@@ -11,7 +11,7 @@ from sklearn.neighbors import KernelDensity
 parser = argparse.ArgumentParser()
 parser.add_argument("--monotone_param", type=float, default=0.01, help="monotone penalty constant")
 parser.add_argument("--dataset", type=str, default='LV', help="LV only")
-parser.add_argument("--n_train", type=int, default=10000, help="number of training samples")
+parser.add_argument("--n_train", type=int, default=1000, help="number of training samples")
 parser.add_argument("--n_epochs", type=int, default=1, help="number of epochs")
 parser.add_argument("--n_layers", type=int, default=3, help="number of layers in network")
 parser.add_argument("--n_units", type=int, default=128, help="number of hidden units in each layer")
@@ -35,14 +35,15 @@ else:
     raise ValueError('Dataset is not supported')
 
 # generate data
-y_train = pi.sample_prior(args.n_train)
-u_train = pi.sample_data(y_train)
-y_train = torch.from_numpy(y_train.astype(np.float32))
+u_train = pi.sample_prior(args.n_train)
+y_train, _ = pi.sample_data(u_train)
+u_train = np.real(u_train)
+y_train = np.real(y_train)
 u_train = torch.from_numpy(u_train.astype(np.float32))
+y_train = torch.from_numpy(y_train.astype(np.float32))
 
 dim_u = u_train.shape[1]
 dim_y = y_train.shape[1]
-
 
 # fully connected feedforward neural network
 class fcfnn(nn.Module):

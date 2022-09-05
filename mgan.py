@@ -11,8 +11,8 @@ from sklearn.neighbors import KernelDensity
 parser = argparse.ArgumentParser()
 parser.add_argument("--monotone_param", type=float, default=0.01, help="monotone penalty constant")
 parser.add_argument("--dataset", type=str, default='tanh_v1', help="one of: tanh_v1,tanh_v2,tanh_v3")
-parser.add_argument("--n_train", type=int, default=10000, help="number of training samples")
-parser.add_argument("--n_epochs", type=int, default=1, help="number of epochs")
+parser.add_argument("--n_train", type=int, default=20000, help="number of training samples")
+parser.add_argument("--n_epochs", type=int, default=300, help="number of epochs")
 parser.add_argument("--n_layers", type=int, default=3, help="number of layers in network")
 parser.add_argument("--n_units", type=int, default=128, help="number of hidden units in each layer")
 parser.add_argument("--batch_size", type=int, default=100, help="batch size (Should divide Ntest)")
@@ -265,7 +265,7 @@ xx, yy, zz = kde2D(y_train[:,0], u_train[:,0], 0.5)
 plt.pcolormesh(xx, yy, np.exp(zz))
 
 # plot M-GAN estimate
-y_vec = np.linspace(y_dom[0], y_dom[1], 1000)
+y_vec = np.linspace(-3, 3, 1000)
 y_vec = np.reshape(y_vec, (1000, 1))
 y_vec = torch.from_numpy(y_vec.astype(np.float32))
 with torch.no_grad():
