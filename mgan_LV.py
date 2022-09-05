@@ -6,14 +6,15 @@ import numpy as np
 from numpy import gradient
 import argparse
 import matplotlib.pyplot as plt
+import numpy as np
 from sklearn.neighbors import KernelDensity
 
 # hyperparameters
 parser = argparse.ArgumentParser()
 parser.add_argument("--monotone_param", type=float, default=0.01, help="monotone penalty constant")
 parser.add_argument("--dataset", type=str, default='LV', help="LV only")
-parser.add_argument("--n_train", type=int, default=1000, help="number of training samples")
-parser.add_argument("--n_epochs", type=int, default=10, help="number of epochs")
+parser.add_argument("--n_train", type=int, default=10000, help="number of training samples")
+parser.add_argument("--n_epochs", type=int, default=200, help="number of epochs")
 parser.add_argument("--n_layers", type=int, default=3, help="number of layers in network")
 parser.add_argument("--n_units", type=int, default=128, help="number of hidden units in each layer")
 parser.add_argument("--batch_size", type=int, default=100, help="batch size (Should divide Ntest)")
@@ -191,46 +192,47 @@ for ep in range(args.n_epochs):
 
 # plot
 
-# define model
-# T = 20
-# true_LV = LV(T)
-# # define true parameters and observation
-# xtrue = np.array([0.6859157, 0.10761319, 0.88789904, 0.116794825])
-# tt = np.linspace(0,true_LV.T,1000)
-# ytrue = true_LV.simulate_ode(xtrue, tt)
-# yobs,tobs = true_LV.sample_data(xtrue)
-# nobs = int(yobs.size/2.)
-# yobs_plot = yobs.reshape((nobs,2))
+true_LV = LV(20)
+# define true parameters and observation
+xtrue = np.array([0.6859157, 0.10761319, 0.88789904, 0.116794825])
+tt = np.linspace(0,true_LV.T,1000)
+ytrue = true_LV.simulate_ode(xtrue, tt)
+yobs,tobs = true_LV.sample_data(xtrue)
+nobs = int(yobs.size/2.)
+yobs_plot = yobs.reshape((nobs,2))
 
-# Ntest = 1000
-# yobs = torch.from_numpy(yobs.astype(np.float32))
-# yi = yobs.repeat(Ntest,1).to(device)
-# z = torch.randn(Ntest, dim_u, device=device)
-# with torch.no_grad():
-#     Gz = G(torch.cat((yi, z), 1))
-# Gz = Gz.cpu().numpy()
+Ntest = 1000
+yobs = torch.from_numpy(yobs.astype(np.float32))
+yi = yobs.repeat(Ntest,1).to(device)
+z = torch.randn(Ntest, dim_u, device=device)
+with torch.no_grad():
+    Gz = G(torch.cat((yi, z), 1))
+Gz = Gz.cpu().numpy()
 
+# plot joint
+# 2-D KDE
+def kde2D(x, y, bandwidth, xbins=100j, ybins=100j, **kwargs):
+    """Build 2D kernel density estimate (KDE)."""
 
-# # 2-D KDE
-# def kde2D(x, y, bandwidth, xbins=100j, ybins=100j, **kwargs):
-#     """Build 2D kernel density estimate (KDE)."""
+    # create grid of sample locations (default: 100x100)
+    xx, yy = np.mgrid[x.min():x.max():xbins,
+                      y.min():y.max():ybins]
 
-#     # create grid of sample locations (default: 100x100)
-#     xx, yy = np.mgrid[x.min():x.max():xbins,
-#                       y.min():y.max():ybins]
+    xy_sample = np.vstack([yy.ravel(), xx.ravel()]).T
+    xy_train  = np.vstack([y, x]).T
 
-#     xy_sample = np.vstack([yy.ravel(), xx.ravel()]).T
-#     xy_train  = np.vstack([y, x]).T
+    kde_skl = KernelDensity(bandwidth=bandwidth, **kwargs)
+    kde_skl.fit(xy_train)
 
-#     kde_skl = KernelDensity(bandwidth=bandwidth, **kwargs)
-#     kde_skl.fit(xy_train)
+    # score_samples() returns the log-likelihood of the samples
+    z = np.exp(kde_skl.score_samples(xy_sample))
+    return xx, yy, np.reshape(z, xx.shape)
 
-#     # score_samples() returns the log-likelihood of the samples
-#     z = np.exp(kde_skl.score_samples(xy_sample))
-#     return xx, yy, np.reshape(z, xx.shape)
-
-# # plot joint
-# plt.figure()
-# xx, yy, zz = kde2D(Gz[:,0], Gz[:,1], 0.5)
-# plt.pcolormesh(xx, yy, np.exp(zz))
-# plt.show()
+plt.figure()
+# limits = [[0.5,1.3],[0.02,0.07],[0.7,1.5],[0.025,0.065]]
+# plt.xlim(limits[0])
+# plt.ylim(limits[1])
+xx, yy, zz = kde2D(Gz[:,0], Gz[:,1], 0.5)
+plt.contourf(xx, yy, np.exp(zz), cmap='Blues')
+plt.plot(xtrue[0], xtrue[1], 'o', markersize=8, color='red')
+plt.show()
