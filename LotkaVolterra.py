@@ -66,26 +66,26 @@ class LV():
         return (xt, tt)
 
 
- # define model
-T = 20
-true_LV = LV(T)
+# # define model
+# T = 20
+# true_LV = LV(T)
 
-# define true parameters and observation
-xtrue = np.array([0.6859157, 0.10761319, 0.88789904, 0.116794825])
-tt = np.linspace(0,true_LV.T,1000)
-ytrue = true_LV.simulate_ode(xtrue, tt)
-yobs,tobs = true_LV.sample_data(xtrue)
-nobs = int(yobs.size/2.)
-yobs_plot = yobs.reshape((nobs,2))
+# # define true parameters and observation
+# xtrue = np.array([0.6859157, 0.10761319, 0.88789904, 0.116794825])
+# tt = np.linspace(0,true_LV.T,1000)
+# ytrue = true_LV.simulate_ode(xtrue, tt)
+# yobs,tobs = true_LV.sample_data(xtrue)
+# nobs = int(yobs.size/2.)
+# yobs_plot = yobs.reshape((nobs,2))
 
-# plot single simulation
-plt.figure()
-plt.plot(tt,ytrue[:,0], 'blue', tt,ytrue[:,1],'red')
-plt.plot(tobs[1:],yobs_plot[:,0],'o', markersize=8, color='blue')
-plt.plot(tobs[1:],yobs_plot[:,1],'o', markersize=8, color='red')
-plt.xlabel('$t$')
-plt.ylabel('Observations')
-plt.show()
+# # plot single simulation
+# plt.figure()
+# plt.plot(tt,ytrue[:,0], 'blue', tt,ytrue[:,1],'red')
+# plt.plot(tobs[1:],yobs_plot[:,0],'o', markersize=8, color='blue')
+# plt.plot(tobs[1:],yobs_plot[:,1],'o', markersize=8, color='red')
+# plt.xlabel('$t$')
+# plt.ylabel('Observations')
+# plt.show()
 
 
 
