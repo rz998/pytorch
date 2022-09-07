@@ -10,9 +10,9 @@ from utility import kde2D, fcfnn, UnitGaussianNormalizer
 # hyperparameters
 parser = argparse.ArgumentParser()
 parser.add_argument("--monotone_param", type=float, default=0.01, help="monotone penalty constant")
-parser.add_argument("--dataset", type=str, default='LV', help="LV only")
-parser.add_argument("--n_train", type=int, default=20000, help="number of training samples")
-parser.add_argument("--n_epochs", type=int, default=400, help="number of epochs")
+parser.add_argument("--dataset", type=str, default='DF', help="DF only")
+parser.add_argument("--n_train", type=int, default=10000, help="number of training samples")
+parser.add_argument("--n_epochs", type=int, default=100, help="number of epochs")
 parser.add_argument("--n_layers", type=int, default=3, help="number of layers in network")
 parser.add_argument("--n_units", type=int, default=128, help="number of hidden units in each layer")
 parser.add_argument("--batch_size", type=int, default=100, help="batch size (Should divide Ntest)")
@@ -174,7 +174,7 @@ tt = np.linspace(0,true_LV.T,1000)
 ytrue = true_LV.simulate_ode(utrue, tt)
 yobs,tobs = true_LV.sample_data(utrue)
 
-Ntest = 1000
+Ntest = 10000
 yobs = torch.from_numpy(yobs.astype(np.float32))
 yobs = y_normalizer.encode(yobs)
 yi = yobs.repeat(Ntest,1).to(device)
@@ -187,10 +187,11 @@ Gz = Gz.cpu().numpy()
 # plot joint
 
 plt.figure()
-# limits = [[0.5,1.3],[0.02,0.07],[0.7,1.5],[0.025,0.065]]
-# plt.xlim(limits[0])
-# plt.ylim(limits[1])
-xx, yy, zz = kde2D(Gz[:,0], Gz[:,1], 0.05)
+limits = [[0.5,1.3],[0.02,0.07],[0.7,1.5],[0.025,0.065]]
+plt.xlim(limits[0])
+plt.ylim(limits[1])
+xx, yy, zz = kde2D(Gz[:,0], Gz[:,1], 0.5)
 plt.contourf(xx, yy, np.exp(zz), cmap='Blues')
-plt.plot(utrue[0], utrue[1], 'o', markersize=5, color='red')
+plt.plot(utrue[0], utrue[1], 'o', markersize=8, color='red')
 plt.show()
+

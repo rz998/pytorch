@@ -5,7 +5,7 @@ from tanh_example import tanh_v1, tanh_v2, tanh_v3
 import numpy as np
 import argparse
 import matplotlib.pyplot as plt
-from sklearn.neighbors import KernelDensity
+from utility import kde2D, fcfnn
 
 # hyperparameters
 parser = argparse.ArgumentParser()
@@ -47,33 +47,6 @@ u_train = torch.from_numpy(u_train.astype(np.float32))
 dim_u = u_train.shape[1]
 dim_y = y_train.shape[1]
 
-
-# fully connected feedforward neural network
-class fcfnn(nn.Module):
-    def __init__(self, layers, activ, activ_params=None, out_activ=None, out_activ_params=None):
-        super(fcfnn, self).__init__()
-        self.n_layers=len(layers)-2
-
-        self.layers=nn.ModuleList()
-        for i in range(self.n_layers):
-            self.layers.append(nn.Linear(layers[i],layers[i+1]))
-            if activ_params is not None:
-                self.layers.append(activ(*activ_params))
-            else:
-                self.layers.append(activ())
-        self.layers.append(nn.Linear(layers[self.n_layers],layers[self.n_layers+1]))
-
-        if out_activ is not None:
-            if out_activ_params is not None:
-                self.layers.append(out_activ(*out_activ_params))
-            else:
-                self.layers.append(out_activ())
-
-
-    def forward(self, x):
-        for _, l in enumerate(self.layers):
-            x = l(x)
-        return x
 
 
 # batch
@@ -230,24 +203,6 @@ plt.show()
 
 # plot joint
 plt.figure()
-# 2-D KDE
-def kde2D(x, y, bandwidth, xbins=100j, ybins=100j, **kwargs):
-    """Build 2D kernel density estimate (KDE)."""
-
-    # create grid of sample locations (default: 100x100)
-    xx, yy = np.mgrid[x.min():x.max():xbins,
-                      y.min():y.max():ybins]
-
-    xy_sample = np.vstack([yy.ravel(), xx.ravel()]).T
-    xy_train  = np.vstack([y, x]).T
-
-    kde_skl = KernelDensity(bandwidth=bandwidth, **kwargs)
-    kde_skl.fit(xy_train)
-
-    # score_samples() returns the log-likelihood of the samples
-    z = np.exp(kde_skl.score_samples(xy_sample))
-    return xx, yy, np.reshape(z, xx.shape)
-
 
 
 # define u domain
