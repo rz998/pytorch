@@ -2,15 +2,15 @@ import torch
 import torch.nn as nn
 import numpy as np
 import math
-from LotkaVolterra import LV
 import argparse
 import matplotlib.pyplot as plt
-from utility import kde2D, fcfnn, UnitGaussianNormalizer
+from utility import kde2D, fcfnn, UnitGaussianNormalizer, MatReader
+from scipy.io import savemat
 
 # hyperparameters
 parser = argparse.ArgumentParser()
 parser.add_argument("--monotone_param", type=float, default=0.01, help="monotone penalty constant")
-parser.add_argument("--dataset", type=str, default='DF', help="DF only")
+parser.add_argument("--latent_dim", type=int, default=25, help="number of latent dimensions")
 parser.add_argument("--n_train", type=int, default=10000, help="number of training samples")
 parser.add_argument("--n_epochs", type=int, default=100, help="number of epochs")
 parser.add_argument("--n_layers", type=int, default=3, help="number of layers in network")
@@ -28,26 +28,31 @@ device = torch.device('cpu')
 
 
 # pick dataset
-dataset = args.dataset
-if dataset == 'LV':
-    pi = LV(20)
-else:
-    raise ValueError('Dataset is not supported')
+dataset = 'darcy_data_noiseless_latentdim'+str(args.latent_dim)
+reader = MatReader(dataset+'.mat')
+u = reader.read_field('x_score')
+y = reader.read_field('y')
+
 
 # generate data and normalize
-u_train = pi.sample_prior(args.n_train)
-y_train, _ = pi.sample_data(u_train)
-y_train = torch.from_numpy(y_train.astype(np.float32))
-u_train = torch.from_numpy(u_train.astype(np.float32))
+u_train = u[:args.n_train,:]
+y_train = y[:args.n_train,:]
+y_train = torch.reshape(y_train, (y_train.shape[0],y_train.shape[1]*y_train.shape[2]))
+
+# add noise to y
+y_train += 0.02*torch.randn(y_train.shape)
+
 u_normalizer = UnitGaussianNormalizer(u_train)
 u_train = u_normalizer.encode(u_train)
 y_normalizer = UnitGaussianNormalizer(y_train)
 y_train = y_normalizer.encode(y_train)
 
+
 # get dimensions of data
 dim_u = u_train.shape[1]
 dim_y = y_train.shape[1]
-
+if dim_u != args.latent_dim:
+    raise ValueError('u data doesn''t have correct dimensions')
 
 
 # batch
@@ -164,34 +169,25 @@ for ep in range(args.n_epochs):
     print('Epoch %3d, Monotonicity: %f, G loss: %f, D loss: %f' % \
          (ep, monotonicity[ep], G_train[ep], D_train[ep]))
 
+# load true field
+true_data = 'true_field'
+reader = MatReader(true_data+'.mat')
+y_true = reader.read_field('y')
 
-# plot
 
-true_LV = LV(20)
-# define true parameters and observation
-utrue = np.array([0.83194674, 0.04134147, 1.0823151, 0.03991483])
-tt = np.linspace(0,true_LV.T,1000)
-ytrue = true_LV.simulate_ode(utrue, tt)
-yobs,tobs = true_LV.sample_data(utrue)
+# normalize
+y_true = torch.reshape(y_true, (y_true.shape[0],y_true.shape[1]*y_true.shape[2]))
+y_true = y_normalizer.encode(y_true)
 
-Ntest = 10000
-yobs = torch.from_numpy(yobs.astype(np.float32))
-yobs = y_normalizer.encode(yobs)
-yi = yobs.repeat(Ntest,1).to(device)
+
+# generate test samples
+Ntest = 1000
+yi = y_true.repeat(Ntest,1).to(device)
 z = torch.randn(Ntest, dim_u, device=device)
 with torch.no_grad():
     Gz = G(torch.cat((yi, z), 1))
 Gz = u_normalizer.decode(Gz)
 Gz = Gz.cpu().numpy()
 
-# plot joint
-
-plt.figure()
-limits = [[0.5,1.3],[0.02,0.07],[0.7,1.5],[0.025,0.065]]
-plt.xlim(limits[0])
-plt.ylim(limits[1])
-xx, yy, zz = kde2D(Gz[:,0], Gz[:,1], 0.5)
-plt.contourf(xx, yy, np.exp(zz), cmap='Blues')
-plt.plot(utrue[0], utrue[1], 'o', markersize=8, color='red')
-plt.show()
-
+# save data
+savemat('MGAN_field' + '.mat', mdict={'u_MGAN': Gz})

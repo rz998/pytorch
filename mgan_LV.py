@@ -10,7 +10,6 @@ from utility import kde2D, fcfnn, UnitGaussianNormalizer
 # hyperparameters
 parser = argparse.ArgumentParser()
 parser.add_argument("--monotone_param", type=float, default=0.01, help="monotone penalty constant")
-parser.add_argument("--dataset", type=str, default='LV', help="LV only")
 parser.add_argument("--n_train", type=int, default=20000, help="number of training samples")
 parser.add_argument("--n_epochs", type=int, default=400, help="number of epochs")
 parser.add_argument("--n_layers", type=int, default=3, help="number of layers in network")
@@ -28,11 +27,9 @@ device = torch.device('cpu')
 
 
 # pick dataset
-dataset = args.dataset
-if dataset == 'LV':
-    pi = LV(20)
-else:
-    raise ValueError('Dataset is not supported')
+T = 20
+pi = LV(T)
+
 
 # generate data and normalize
 u_train = pi.sample_prior(args.n_train)
@@ -167,13 +164,14 @@ for ep in range(args.n_epochs):
 
 # plot
 
-true_LV = LV(20)
 # define true parameters and observation
+true_LV = LV(T)
 utrue = np.array([0.83194674, 0.04134147, 1.0823151, 0.03991483])
 tt = np.linspace(0,true_LV.T,1000)
 ytrue = true_LV.simulate_ode(utrue, tt)
 yobs,tobs = true_LV.sample_data(utrue)
 
+# generate test samples
 Ntest = 1000
 yobs = torch.from_numpy(yobs.astype(np.float32))
 yobs = y_normalizer.encode(yobs)
@@ -184,12 +182,9 @@ with torch.no_grad():
 Gz = u_normalizer.decode(Gz)
 Gz = Gz.cpu().numpy()
 
-# plot joint
+# plot joint density with KDE
 
 plt.figure()
-# limits = [[0.5,1.3],[0.02,0.07],[0.7,1.5],[0.025,0.065]]
-# plt.xlim(limits[0])
-# plt.ylim(limits[1])
 xx, yy, zz = kde2D(Gz[:,0], Gz[:,1], 0.05)
 plt.contourf(xx, yy, np.exp(zz), cmap='Blues')
 plt.plot(utrue[0], utrue[1], 'o', markersize=5, color='red')
