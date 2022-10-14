@@ -62,7 +62,7 @@ network_params = [dim_u+dim_y] + [2 * args.n_units] + [4 * args.n_units] + [args
 # generator network
 G = fcfnn(network_params + [dim_u], nn.LeakyReLU, activ_params=[0.2, True]).to(device)
 # discriminator network
-D = fcfnn(network_params + [1], nn.LeakyReLU, activ_params=[0.2, True], out_activ_params=nn.Sigmoid).to(device)
+D = fcfnn(network_params + [1], nn.LeakyReLU, activ_params=[0.2, True], out_activ=nn.Sigmoid).to(device)
 
 
 # optimizers

@@ -11,12 +11,13 @@ from scipy.io import savemat
 parser = argparse.ArgumentParser()
 parser.add_argument("--monotone_param", type=float, default=0.01, help="monotone penalty constant")
 parser.add_argument("--latent_dim", type=int, default=25, help="number of latent dimensions")
-parser.add_argument("--n_train", type=int, default=10000, help="number of training samples")
-parser.add_argument("--n_epochs", type=int, default=100, help="number of epochs")
+parser.add_argument("--n_train", type=int, default=50000, help="number of training samples")
+parser.add_argument("--n_epochs", type=int, default=400, help="number of epochs")
 parser.add_argument("--n_layers", type=int, default=3, help="number of layers in network")
 parser.add_argument("--n_units", type=int, default=128, help="number of hidden units in each layer")
 parser.add_argument("--batch_size", type=int, default=100, help="batch size (Should divide Ntest)")
 parser.add_argument("--learning_rate", type=float, default=0.0002, help="learning rate")
+parser.add_argument("--noise", type=float, default=0.000001, help="noise")
 args = parser.parse_args()
 
 # set torch seed
@@ -40,7 +41,7 @@ y_train = y[:args.n_train,:]
 y_train = torch.reshape(y_train, (y_train.shape[0],y_train.shape[1]*y_train.shape[2]))
 
 # add noise to y
-y_train += 0.02*torch.randn(y_train.shape)
+y_train += args.noise*torch.randn(y_train.shape)
 
 u_normalizer = UnitGaussianNormalizer(u_train)
 u_train = u_normalizer.encode(u_train)
@@ -61,7 +62,8 @@ train_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(y_trai
 ydata_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(y_train, ), batch_size=bsize, shuffle=True)
 
 # loss function
-mse_loss = torch.nn.MSELoss()
+mse_loss = torch.nn.BCELoss()
+
 
 # build networks
 G_params = [dim_u+dim_y] + [args.n_units] + [2 * args.n_units] + [4 * args.n_units]
@@ -69,7 +71,7 @@ D_params = [dim_u+dim_y] + [4 * args.n_units] + [2 * args.n_units] + [args.n_uni
 # generator network
 G = fcfnn(G_params + [dim_u], nn.LeakyReLU, activ_params=[0.2, True]).to(device)
 # discriminator network
-D = fcfnn(D_params + [1], nn.LeakyReLU, activ_params=[0.2, True], out_activ_params=nn.Sigmoid).to(device)
+D = fcfnn(D_params + [1], nn.LeakyReLU, activ_params=[0.2, True], out_activ=nn.Sigmoid).to(device)
 
 
 # optimizers
@@ -173,11 +175,14 @@ for ep in range(args.n_epochs):
 true_data = 'true_field'
 reader = MatReader(true_data+'.mat')
 y_true = reader.read_field('y')
+y_true = torch.reshape(y_true, (y_true.shape[0],y_true.shape[1]*y_true.shape[2]))
 
+# add noise to y
+y_true += args.noise*torch.randn(y_true.shape)
 
 # normalize
-y_true = torch.reshape(y_true, (y_true.shape[0],y_true.shape[1]*y_true.shape[2]))
 y_true = y_normalizer.encode(y_true)
+
 
 
 # generate test samples
@@ -187,7 +192,7 @@ z = torch.randn(Ntest, dim_u, device=device)
 with torch.no_grad():
     Gz = G(torch.cat((yi, z), 1))
 Gz = u_normalizer.decode(Gz)
-Gz = Gz.cpu().numpy()
+Gz = Gz.numpy()
 
 # save data
 savemat('MGAN_field' + '.mat', mdict={'u_MGAN': Gz})

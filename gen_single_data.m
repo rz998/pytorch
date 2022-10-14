@@ -2,7 +2,7 @@ clear; close all; clc
 
 % define parameters
 K1 = 256;
-K2 = 128;
+K2 = 8;
 N = 1;
 
 % define parameters for random field a and F
@@ -35,7 +35,7 @@ for j=1:N
 end
 
 % reduce dimension of sol
-sol = sol(:,4:8:end,4:8:end);
+%sol = sol(:,4:16:end,4:16:end);
 
 % take log - gaussian field
 x = log(coeff);
